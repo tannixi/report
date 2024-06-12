@@ -1,0 +1,174 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Images and Display Sizes</title>
+    <link rel="stylesheet" href="{% static 'plugins/bootstrap-3.4.1-dist/css/bootstrap.css' %}">
+    <style>
+        .navbar-brand img {
+            width: 50px; /* 设置图片宽度为50像素 */
+            height: auto; /* 高度自动调整以保持图片比例 */
+        }
+
+        .image-upload, .generated-reports {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            height: 400px; /* 设置固定高度 */
+            width: 500px; /* 设置固定宽度 */
+            overflow: auto; /* 超出部分可滚动 */
+        }
+
+        img.preview {
+            max-width: 100%; /* 控制图片预览的最大宽度 */
+            max-height: 150px; /* 控制图片预览的最大高度 */
+            display: block; /* 图片独占一行 */
+            margin: 0 auto 10px auto; /* 图片居中显示 */
+        }
+
+        .upload-btn {
+            position: absolute; /* 设置绝对定位 */
+            bottom: 10px; /* 距离底部10px */
+            width: 100%; /* 宽度100% */
+        }
+    </style>
+</head>
+
+<body>
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <div class="navbar-brand" href="#">
+                <img alt="Brand Image" src="{% static 'img/1.jpg' %}">
+            </div>
+        </div>
+        <div class="collapse navbar-collapse">
+            <ul class="nav navbar-nav navbar-center">
+                <li class="active"><a href="#" style="text-align:center;">跨模态的肺部X光片自动诊断报告平台</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>请上传您的图片</h1>
+    <div class="row">
+        <div class="col-md-6 image-upload">
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-xs-6">
+                        <input type="file" id="image1" name="image1" required style="width: 100%;"
+                               onchange="previewImage(this, 'preview1')">
+                        <img id="preview1" class="preview"/>
+                    </div>
+                    <div class="col-xs-6">
+                        <input type="file" id="image2" name="image2" required style="width: 100%;"
+                               onchange="previewImage(this, 'preview2')">
+                        <img id="preview2" class="preview"/>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-xs-12">
+                        <label><input type="radio" name="model_choice" value="model_normal" required
+                                      onchange="toggleConditionSelection(false)"> Normal Model</label>
+                        <label><input type="radio" name="model_choice" value="model_pro" required
+                                      onchange="toggleConditionSelection(true)"> Professional Model</label>
+                        <label><input type="radio" name="model_choice" value="model_third" required> Third Model</label>
+                    </div>
+                </div>
+
+                <div id="conditionSelection" style="display:none; margin-top: 20px;">
+                    <label><input type="checkbox" value="1"> Enlarged Cardiomediastinum</label>
+                    <label><input type="checkbox" value="2"> Cardiomegaly</label>
+                    <label><input type="checkbox" value="3"> Lung Opacity</label>
+                    <label><input type="checkbox" value="4"> Lung Lesion</label>
+                    <label><input type="checkbox" value="5"> Edema</label>
+                    <label><input type="checkbox" value="6"> Consolidation</label>
+                    <label><input type="checkbox" value="7"> Pneumonia</label>
+                    <label><input type="checkbox" value="8"> Atelectasis</label>
+                    <label><input type="checkbox" value="9"> Pneumothorax</label>
+                    <label><input type="checkbox" value="10"> Pleural Effusion</label>
+                    <label><input type="checkbox" value="11"> Pleural Other</label>
+                    <label><input type="checkbox" value="12"> Fracture</label>
+                    <label><input type="checkbox" value="13"> Support Devices</label>
+                    <label><input type="checkbox" value="14"> No Finding</label>
+
+                    <!-- 继续添加其他医学条件的复选框 -->
+                </div>
+
+                <input type="hidden" name="selected_values" id="selectedValues">
+                <input type="submit" value="Upload" style="width: 100%;" onclick="return gatherValuesAndSubmit();">
+            </form>
+
+
+        </div>
+        <div class="col-md-6 generated-reports">
+            <h1>生成报告</h1>
+            {% if reports %}
+                {% for report in reports %}
+                    <p>{{ report }}</p>
+                {% endfor %}
+            {% endif %}
+            {% if image_size %}
+                <h2>图片大小</h2>
+                <p>{{ image_size }}</p>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+
+<script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+<script>
+    function previewImage(input, previewId) {
+        var file = input.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                document.getElementById(previewId).src = e.target.result;
+                // 存储 Base64 编码在本地存储中，以便刷新页面时重新加载图片
+                localStorage.setItem(previewId, e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // 在页面加载时检查是否有图片存储在本地存储中，并加载它们
+    window.onload = function () {
+        var preview1Data = localStorage.getItem('preview1');
+        if (preview1Data) {
+            document.getElementById('preview1').src = preview1Data;
+        }
+        var preview2Data = localStorage.getItem('preview2');
+        if (preview2Data) {
+            document.getElementById('preview2').src = preview2Data;
+        }
+    };
+
+    function toggleConditionSelection(show) {
+        document.getElementById('conditionSelection').style.display = show ? 'block' : 'none';
+    }
+
+
+    function gatherValuesAndSubmit() {
+        var modelType = document.querySelector('input[name="model_choice"]:checked').value;
+        if (modelType === 'model_pro') {
+            // 收集复选框的值
+            var selectedValues = [];
+            var checkboxes = document.querySelectorAll('#conditionSelection input[type="checkbox"]:checked');
+            checkboxes.forEach(function (checkbox) {
+                selectedValues.push(checkbox.value);
+            });
+            document.getElementById('selectedValues').value = selectedValues.join(',');
+        } else {
+            // 对于 Normal Model，清空可能已选的复选框值
+            document.getElementById('selectedValues').value = '';
+        }
+        return true; // 允许表单提交
+    }
+</script>
+</body>
+</html>
